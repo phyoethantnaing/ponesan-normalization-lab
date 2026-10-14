@@ -8,6 +8,8 @@ This repository contains the complete app and its GitHub Pages deployment workfl
 
 In **Settings → Pages**, select **GitHub Actions** as the build source. GitHub Pages must be available for the repository's visibility and account plan. Find the deployed website URL on that settings page or in the `github-pages` deployment environment. The workflow supplies GitHub Pages' base path so JavaScript, CSS, and locally bundled Myanmar fonts work under a project URL.
 
+Tests and the build also run before Pages is enabled. If hosting is not configured yet, the workflow uploads the built website and explains the missing setting in its run summary. After enabling Pages, run **Test, build, and deploy website** from the Actions tab, or push another commit, to publish.
+
 For another static hosting service, use build command `npm run build` and output directory `dist`. Set `VITE_BASE_PATH` only when hosting under a subdirectory; the default is `/`.
 
 GitHub မှာ source code ပြင်ပြီး `main` branch ကို တင်လိုက်ရင် website ပါ အလိုအလျောက် update ဖြစ်မယ်။ ကိုယ်တိုင် server ထောင်စရာ မလိုပါ။
