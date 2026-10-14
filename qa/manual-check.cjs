@@ -1,0 +1,24 @@
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+(async()=>{
+ const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH || (require('node:fs').existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),headless:true,args:['--no-sandbox']});const page=await browser.newPage({viewport:{width:1280,height:900}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://localhost:5173/#playground');await page.waitForTimeout(500);
+ const splitter=page.locator('.tool-card').first();
+ async function split(cols,pk,name,source){if(source)await page.getByLabel('Table to split').selectOption({label:source});const picker=splitter.locator('.column-picker').first();for(const c of cols)await picker.getByLabel(c,{exact:true}).check();const keypicker=splitter.locator('.column-picker').nth(1);await keypicker.getByLabel(pk,{exact:true}).check();await page.getByLabel('New table name').fill(name);await page.getByRole('button',{name:'ရွေးထားတာတွေ ခွဲမယ်',exact:false}).click()}
+ async function connect(from,to){await page.getByLabel('Foreign Key source').selectOption({label:from});await page.getByLabel('Referenced Primary Key').selectOption({label:to});await page.getByRole('button',{name:'Connect tables',exact:true}).click()}
+ await split(['StudentID','StudentName','DepartmentID','DepartmentName'],'StudentID','Students');
+ await split(['CourseID','CourseName'],'CourseID','Courses','Student enrollments');
+ await connect('Student enrollments.StudentID','Students.StudentID');await connect('Student enrollments.CourseID','Courses.CourseID');
+ await page.getByRole('button',{name:'အဖြေစစ်မယ်',exact:true}).click();assert.equal(await page.locator('.validation-result.success').count(),1);console.log('Manual 2NF split + connections passed.');
+ await page.getByLabel('Target normalization level').selectOption('3NF');await split(['DepartmentID','DepartmentName'],'DepartmentID','Departments','Students');await connect('Students.DepartmentID','Departments.DepartmentID');await page.getByRole('button',{name:'အဖြေစစ်မယ်',exact:true}).click();assert.equal(await page.locator('.validation-result.success').count(),1);console.log('Manual 3NF split + connection passed.');
+ await page.getByRole('button',{name:'Final quiz',exact:false}).click();const answers=[1,2,2,2,0,1,1,2,null,1];
+ for(let i=0;i<10;i++){if(i===8){await page.getByRole('button',{name:'Move UNF up',exact:true}).click();await page.getByRole('button',{name:'Move 1NF up',exact:true}).click();await page.getByRole('button',{name:'Move 1NF up',exact:true}).click();await page.getByRole('button',{name:'အဖြေစစ်မယ်',exact:false}).click()}else await page.locator('.quiz-options>button').nth(answers[i]).click();assert.equal(await page.locator('.quiz-feedback.success').count(),1);if(i<9)await page.getByRole('button',{name:'နောက်မေးခွန်း',exact:false}).click()}
+ await page.getByRole('button',{name:'ရလဒ်ကြည့်မယ်',exact:false}).click();assert.equal((await page.locator('.score').innerText()).replace(/\s/g,''),'10/10');console.log('All ten final questions including ordering passed.');
+ await page.getByRole('button',{name:'Learning overview',exact:false}).click();await page.waitForTimeout(300);await page.getByLabel('Before After toy organization slider').fill('100');assert.equal(await page.getByLabel('Before After toy organization slider').inputValue(),'100');console.log('Before/After slider passed.');
+ for(let i=0;i<6;i++){await page.goto(`http://localhost:5173/#lesson/${i}`);await page.waitForTimeout(500);await page.getByRole('button',{name:'Animation step 5',exact:true}).click();assert.equal(await page.locator('.step-count').innerText(),'5 / 5');await page.getByRole('button',{name:'Previous animation step',exact:true}).click();assert.equal(await page.locator('.step-count').innerText(),'4 / 5');}
+ console.log('All six lesson animations + previous step passed.');
+ await page.getByRole('button',{name:'Switch to dark mode',exact:true}).click();await page.getByRole('button',{name:'Learning overview',exact:false}).click();await page.waitForTimeout(600);await page.screenshot({path:'qa/dark-desktop.png'});
+ for(const width of [320,390,768,1024,1440]){await page.setViewportSize({width,height:900});await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);console.log(`Responsive width ${width}: no horizontal page overflow.`)}
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:'qa/mobile-dark-fixed.png'});await page.getByRole('button',{name:'Switch to light mode',exact:true}).click();await page.waitForTimeout(600);await page.screenshot({path:'qa/mobile-light.png'});
+ assert.deepEqual(errors,[]);console.log('No browser errors.');await browser.close();
+})().catch(e=>{console.error(e);process.exit(1)});
